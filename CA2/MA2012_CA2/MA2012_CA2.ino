@@ -1,33 +1,38 @@
-/*
+  /*
 General question 
 Will printing random(0,300) give me the same value everytime? If I did not do randomSeed 
 if I do randomSeed(1) and randomSeed(2) and then I print, would it be almost similar
 */
 
 
+
+
 //General define 
-
-
 
 //Global Variable 
 int intChosen =0;
 int intRandom =0;
 
+//PiezoBuzzer Define 
+#define piezoBuzzer 8
+
 //Solenoid Define  
-#define solenoid 1
+#define solenoid 9
 
 //DC Motor Define 
-#define dcMotor1 2
-#define dcMotor2 3
+#define dcMotorA1 5
+#define dcMotorA2 4
+#define dcMotorB1 2
+#define dcMotorB2 3
 
 //Keypad Define Guess from 0-50 (size = 51)
 #define chosenArraySize 3  //Is actually 4
 #define randomArraySize 50 
-#define KA 4
-#define KB 5
-#define KC 6
-#define KD 7
-#define KAvail 8 
+#define KA 10
+#define KB 11
+#define KC 12
+#define KD 13
+#define KAvail A5 
 
 //Keypad Variable
 char keyboardChar[] = {'1','2','3','F',
@@ -42,25 +47,29 @@ int indexChosen =0;
 int indexRandom =0;
 
 //LCD Library 
-#include <LiquidCrystal.h> //For LCD
+//#include <LiquidCrystal.h> //For LCD
 
 //LCD Define 
-const int rs = 9, en = 10, d4 = 11, d5 = 12, d6 = 13, d7 = 14;
-LiquidCrystal lcd (rs,en,d4,d5,d6,d7); //Creating object 
+/*const int rs = 9, en = 10, d4 = 11, d5 = 12, d6 = 13, d7 = 14;
+LiquidCrystal lcd (rs,en,d4,d5,d6,d7); //Creating object */
 
 
 void setup() {
   Serial.begin(9600);
-  randomSeed(analogRead(A0));
+  randomSeed(analogRead(A4)); //Random empty AnalogInput
   
 
+  //Piezobuzzer
+  pinMode(piezoBuzzer,OUTPUT);
   
   //Solenoid
   pinMode(solenoid, OUTPUT);
   
   //DC Motor 
-  pinMode(dcMotor1, OUTPUT);
-  pinMode(dcMotor2, OUTPUT);
+  pinMode(dcMotorA1, OUTPUT);
+  pinMode(dcMotorA2, OUTPUT);
+  pinMode(dcMotorB1, OUTPUT);
+  pinMode(dcMotorB2, OUTPUT);
 
   //Keypad 
   pinMode(KA, INPUT);
@@ -69,11 +78,25 @@ void setup() {
   pinMode(KD, INPUT);
   pinMode(KAvail, INPUT);
 
+  //Timer 
+  TCCR1A = 0; //cuz its a 16 bit counter A = 8 bit 
+  TCCR1B = 0; //cuz its a 16 bit counter B = 8 bit
+  TCNT1 = 3036; //To reduce the offset 
+  TCCR1B |= (1<<CS12);  //set prescalar to 256 
+  TIMSK1 |= (1<<TOIE1); //enable overflow 
+
+  //Keypad
   for (int i=0; i<chosenArraySize; i++) chosenArray[i]=' '; // Initializing the chosenArraySize into _ _ _ 0
   chosenArray[chosenArraySize] = 0;  //because this means nothing in ASCII
 
   for (int i=0; i<(randomArraySize+1); i++) randomArray[i] = i; // Making randomArray into list of 0-50 
 }
+
+ISR(TIMER1_OVF_vect) {
+  Serial.println(millis());
+  TCNT1 = 3036; //To reduce the offset 
+}
+
 
 void loop() {
   int intRandom = random(0,51); //selects random number 0 <=indexRandom <51
@@ -98,22 +121,34 @@ void binarySearchTreeProcess() {
     indexFirst = 0;
     indexLast = sizeof(randomArray)/sizeof(randomArray[0]);
     indexRandom = findIndex(intRandom, randomArray, randomArraySize);
+    //Timer should start
     while(true){
       if (digitalRead(KAvail)){
         keypadRead();
       }
       if ( chosenArray[chosenArraySize] == 'F'){
+        conversionCharToInt();
         indexChosen = findIndex(intChosen, randomArray,randomArraySize);
         if ( indexChosen == indexRandom ){
           Serial.println("You pass");
-          break;
-          //Conditions
+          digitalWrite(dcMotorA1, HIGH);
+          digitalWrite(dcMotorA2, LOW);
+          digitalWrite(dcMotorB1, HIGH);
+          digitalWrite(dcMotorB2, LOW);
+          delay(4000);
+          digitalWrite(dcMotorA1, LOW);
+          digitalWrite(dcMotorA2, LOW);
+          digitalWrite(dcMotorB1, LOW);
+          digitalWrite(dcMotorB2, LOW);          
+          
+          break; //break from while loop 
+          
         }
         else if( indexChosen > indexRandom ){
           indexLast = indexChosen;
           Serial.println("Overestimated"); 
           for (int i=0; i<3; i++){
-            //tone(piezoBuzzer, 500, 100);
+            tone(piezoBuzzer, 500, 100);
             delay(200);  
           }
         }
@@ -121,10 +156,11 @@ void binarySearchTreeProcess() {
           indexFirst = indexChosen;
           Serial.println("Underestimated"); 
           for (int i=0; i<2; i++){
-            //tone(piezoBuzzer, 100, 100);
+            tone(piezoBuzzer, 100, 100);
             delay(200);  
           }  
         }
+        else Serial.println("Error in finding index");
       }
     }
 }
@@ -138,7 +174,7 @@ void conversionCharToInt() {
     setPos = setPos + (chosenArray[i] - 48);
   }
  }
- intChosen = setPos;x`
+ intChosen = setPos;
  //Serial.println(intChosen);
 }
 
