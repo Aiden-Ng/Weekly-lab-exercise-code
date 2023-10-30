@@ -8,6 +8,8 @@ if I do randomSeed(1) and randomSeed(2) and then I print, would it be almost sim
 
 
 //General define 
+int duration =0;
+bool checkStatus = false; 
 
 //Global Variable 
 int intChosen =0;
@@ -17,19 +19,19 @@ int intRandom =0;
 #define piezoBuzzer 8
 
 //Solenoid Define  
-#define solenoid 9
+#define solenoid 2
 
 //DC Motor Define 
-#define dcMotorA1 5
-#define dcMotorA2 4
-#define dcMotorB1 2
-#define dcMotorB2 3
+#define dcMotorA1 11
+#define dcMotorA2 6
+#define dcMotorB1 3
+#define dcMotorB2 5
 
 //Keypad Define Guess from 0-50 (size = 51)
 #define chosenArraySize 3  //Is actually 4
 #define randomArraySize 50 
-#define KA 10
-#define KB 11
+#define KA 4
+#define KB 7
 #define KC 12
 #define KD 13
 #define KAvail A5 
@@ -78,13 +80,14 @@ void setup() {
   pinMode(KD, INPUT);
   pinMode(KAvail, INPUT);
 
+  
   //Timer 
   TCCR1A = 0; //cuz its a 16 bit counter A = 8 bit 
   TCCR1B = 0; //cuz its a 16 bit counter B = 8 bit
   TCNT1 = 3036; //To reduce the offset 
   TCCR1B |= (1<<CS12);  //set prescalar to 256 
-  TIMSK1 |= (1<<TOIE1); //enable overflow 
-
+  TIMSK1 |= (1<<TOIE1); //enable overflow
+  
   //Keypad
   for (int i=0; i<chosenArraySize; i++) chosenArray[i]=' '; // Initializing the chosenArraySize into _ _ _ 0
   chosenArray[chosenArraySize] = 0;  //because this means nothing in ASCII
@@ -93,13 +96,35 @@ void setup() {
 }
 
 ISR(TIMER1_OVF_vect) {
-  Serial.println(millis());
-  TCNT1 = 3036; //To reduce the offset 
+  TCNT1 = 3036; //To reduce the offset
+  duration++;
 }
 
 
 void loop() {
-  int intRandom = random(0,51); //selects random number 0 <=indexRandom <51
+  intRandom = random(0,51); //selects random number 0 <=indexRandom <51
+  indexRandom = findIndex(intRandom, randomArray, (randomArraySize +1));
+  /*analogWrite(dcMotorA1, 150);
+  analogWrite(dcMotorA2, LOW);
+  analogWrite(dcMotorB1, 150);
+  analogWrite(dcMotorB2, LOW);
+  delay(1000); //10 second before it restarts. 
+  analogWrite(dcMotorA1, LOW);
+  analogWrite(dcMotorA2, LOW);
+  analogWrite(dcMotorB1, LOW);
+  analogWrite(dcMotorB2, LOW);  
+  delay(2000);
+  analogWrite(dcMotorA1, LOW);
+  analogWrite(dcMotorA2, 150);
+  analogWrite(dcMotorB1, LOW);
+  analogWrite(dcMotorB2, 150);
+  delay(1000);
+  analogWrite(dcMotorA1, LOW);
+  analogWrite(dcMotorA2, LOW);
+  analogWrite(dcMotorB1, LOW);
+  analogWrite(dcMotorB2, LOW);  
+  delay(2000);*/
+  //Serial.println(indexRandom);
   binarySearchTreeProcess();
 }
 
@@ -111,60 +136,97 @@ void keypadRead() {
   kd = digitalRead(KD);
 
   k= ka + kb*2 + kc*4 + kd*8;
-  for (int i =0; i<(chosenArraySize - 1); i++)chosenArray[i]=chosenArray[i+1];
-  chosenArray[chosenArraySize-1]=keyboardChar[k];
-  chosenArray[chosenArraySize]=0;
+  if (k!=3){
+    for (int i =0; i<(chosenArraySize - 1); i++)chosenArray[i]=chosenArray[i+1];
+    chosenArray[chosenArraySize-1]=keyboardChar[k];
+    chosenArray[chosenArraySize]=0;
+  }
+  else {
+    conversionCharToInt();
+    checkStatus = true; 
+    Serial.println(intChosen);
+  }
 }
 
 
 void binarySearchTreeProcess() {
     indexFirst = 0;
     indexLast = sizeof(randomArray)/sizeof(randomArray[0]);
-    indexRandom = findIndex(intRandom, randomArray, randomArraySize);
     //Timer should start
-    while(true){
+    while(duration <=30){      
+      Serial.println(chosenArray);
       if (digitalRead(KAvail)){
         keypadRead();
+        delay(300);
       }
-      if ( chosenArray[chosenArraySize] == 'F'){
-        conversionCharToInt();
-        indexChosen = findIndex(intChosen, randomArray,randomArraySize);
-        if ( indexChosen == indexRandom ){
+      if (checkStatus == true){
+        indexChosen = findIndex(intChosen, randomArray,(randomArraySize+1));
+        if (indexChosen == -1) {
+          Serial.println("Please choose range from 0-50");
+          delay(2000);
+        }
+        else if ( indexChosen == indexRandom ){
           Serial.println("You pass");
-          digitalWrite(dcMotorA1, HIGH);
-          digitalWrite(dcMotorA2, LOW);
-          digitalWrite(dcMotorB1, HIGH);
-          digitalWrite(dcMotorB2, LOW);
-          delay(4000);
-          digitalWrite(dcMotorA1, LOW);
-          digitalWrite(dcMotorA2, LOW);
-          digitalWrite(dcMotorB1, LOW);
-          digitalWrite(dcMotorB2, LOW);          
+          analogWrite(dcMotorA1, 150);
+          analogWrite(dcMotorA2, LOW);
+          analogWrite(dcMotorB1, 150);
+          analogWrite(dcMotorB2, LOW);
+          delay(10000); //10 second before it restarts. 
+          analogWrite(dcMotorA1, LOW);
+          analogWrite(dcMotorA2, LOW);
+          analogWrite(dcMotorB1, LOW);
+          analogWrite(dcMotorB2, LOW);          
           
+          checkStatus = false;
+          for (int i=0; i<chosenArraySize; i++) chosenArray[i]=' '; // Initializing the chosenArraySize into _ _ _ 0
+          chosenArray[chosenArraySize] = 0;  //because this means nothing in ASCII
           break; //break from while loop 
           
         }
         else if( indexChosen > indexRandom ){
-          indexLast = indexChosen;
-          Serial.println("Overestimated"); 
-          for (int i=0; i<3; i++){
-            tone(piezoBuzzer, 500, 100);
-            delay(200);  
+          if (indexChosen <= indexLast) {
+            indexLast = indexChosen;
+            Serial.println("Overestimated"); 
+            for (int i=0; i<3; i++){
+              tone(piezoBuzzer, 500, 100);
+              delay(200);  
+            }
           }
+          else ;
+            Serial.println("It's less than "  + String(indexLast));
+            delay(2000);
         }
         else if ( indexChosen < indexRandom ){
-          indexFirst = indexChosen;
-          Serial.println("Underestimated"); 
-          for (int i=0; i<2; i++){
-            tone(piezoBuzzer, 100, 100);
-            delay(200);  
-          }  
+          if (indexChosen >= indexFirst) {
+            indexFirst = indexChosen;
+            Serial.println("Underestimated"); 
+            for (int i=0; i<2; i++){
+              tone(piezoBuzzer, 100, 100);
+              delay(200);  
+            }
+          }
+          else ;  
+            Serial.println("It's more than "  +  String(indexFirst));
+            delay(2000);
         }
-        else Serial.println("Error in finding index");
+
+        checkStatus = false;
+        for (int i=0; i<chosenArraySize; i++) chosenArray[i]=' '; // Initializing the chosenArraySize into _ _ _ 0
+        chosenArray[chosenArraySize] = 0;  //because this means nothing in ASCII
       }
     }
-}
+    Serial.println("DIE");
+    digitalWrite(solenoid, HIGH);
+    delay(3000);
+    digitalWrite(solenoid, LOW);
 
+    //resetting the variables 
+    checkStatus = false;
+    duration =0;
+    for (int i=0; i<chosenArraySize; i++) chosenArray[i]=' '; // Initializing the chosenArraySize into _ _ _ 0
+    chosenArray[chosenArraySize] = 0;  //because this means nothing in ASCII
+    
+}
 
 void conversionCharToInt() {
  volatile int setPos =0;
@@ -183,6 +245,5 @@ int findIndex(int target, int array[], int length){
   for (int i =0; i < length; i++) {
     if (array[i] == target) return i; 
   }
-  Serial.println("Target not inside the list");
-  return -1;
+   return -1;
 }
