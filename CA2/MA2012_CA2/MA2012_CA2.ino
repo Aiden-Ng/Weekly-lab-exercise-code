@@ -4,11 +4,8 @@ Will printing random(0,300) give me the same value everytime? If I did not do ra
 if I do randomSeed(1) and randomSeed(2) and then I print, would it be almost similar
 */
 
-
-
-
 //General define 
-int duration =0;
+int duration =0; //used as secods 
 bool checkStatus = false; 
 
 //Global Variable 
@@ -17,9 +14,6 @@ int intRandom =0;
 
 //PiezoBuzzer Define 
 #define piezoBuzzer 8
-
-//Solenoid Define  
-#define solenoid 2
 
 //DC Motor Define 
 #define dcMotorA1 11
@@ -63,9 +57,6 @@ void setup() {
 
   //Piezobuzzer
   pinMode(piezoBuzzer,OUTPUT);
-  
-  //Solenoid
-  pinMode(solenoid, OUTPUT);
   
   //DC Motor 
   pinMode(dcMotorA1, OUTPUT);
@@ -170,12 +161,17 @@ void binarySearchTreeProcess() {
           analogWrite(dcMotorA1, 100);
           analogWrite(dcMotorA2, LOW);
           analogWrite(dcMotorB1, 100);
+          analogWrite(dcMotorB1, 150);
           analogWrite(dcMotorB2, LOW);
-          delay(10000); //10 second before it restarts. 
-          analogWrite(dcMotorA1, LOW);
-          analogWrite(dcMotorA2, LOW);
+          delay(2000); //10 second before it restarts. 
           analogWrite(dcMotorB1, LOW);
-          analogWrite(dcMotorB2, LOW);          
+          analogWrite(dcMotorB2, LOW);
+          delay(10000);
+          analogWrite(dcMotorB1, LOW);
+          analogWrite(dcMoto4B2, 150);
+          delay(2000); 
+          analogWrite(dcMotorB1, LOW);
+          analogWrite(dcMotorB2, LOW);  
           
           checkStatus = false;
           for (int i=0; i<chosenArraySize; i++) chosenArray[i]=' '; // Initializing the chosenArraySize into _ _ _ 0
@@ -215,11 +211,19 @@ void binarySearchTreeProcess() {
         chosenArray[chosenArraySize] = 0;  //because this means nothing in ASCII
       }
     }
-    Serial.println("DIE");
-    digitalWrite(solenoid, HIGH);
-    delay(3000);
-    digitalWrite(solenoid, LOW);
-
+    Serial.println("DIE");    
+    analogWrite(dcMotorA1, 100);
+    analogWrite(dcMotorA2, LOW);
+    delay(1300);
+    analogWrite(dcMotorA1, LOW);
+    analogWrite(dcMotorA2, LOW);
+    delay(1000);
+    analogWrite(dcMotorA1; LOW);
+    analogWrite(dcMotorA2; 100);
+    delay(1300);
+    analogWrite(dcMotorA1; LOW);
+    analogWrite(dcMotorA2; LOW);
+    
     //resetting the variables 
     checkStatus = false;
     duration =0;
