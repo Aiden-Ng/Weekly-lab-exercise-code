@@ -167,9 +167,9 @@ void binarySearchTreeProcess() {
         }
         else if ( indexChosen == indexRandom ){
           Serial.println("You pass");
-          analogWrite(dcMotorA1, 150);
+          analogWrite(dcMotorA1, 100);
           analogWrite(dcMotorA2, LOW);
-          analogWrite(dcMotorB1, 150);
+          analogWrite(dcMotorB1, 100);
           analogWrite(dcMotorB2, LOW);
           delay(10000); //10 second before it restarts. 
           analogWrite(dcMotorA1, LOW);
