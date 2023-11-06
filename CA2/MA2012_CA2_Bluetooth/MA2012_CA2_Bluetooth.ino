@@ -4,16 +4,45 @@ Will printing random(0,300) give me the same value everytime? If I did not do ra
 if I do randomSeed(1) and randomSeed(2) and then I print, would it be almost similar
 */
 
-//General define 
-int duration =0; //used as secods 
-bool checkStatus = false; 
+//Global Define 
 
 //Global Variable 
 int intChosen =0;
 int intRandom =0;
+int duration =0; //used as secods 
+bool checkStatus = false; 
 
-//PiezoBuzzer Define 
-#define piezoBuzzer 8
+//digitalSensor Define 
+#define digitalSensor A0
+
+//Bluetooth Define
+#define TxD 2
+#define RxD 8
+
+//Bluetooth Library 
+#include <SoftwareSerial.h>
+
+//Bluetooth Object
+SoftwareSerial bluetoothModule (RxD, TxD);
+
+//Bluetooth Message to be sent
+/*
+Please choose range from 0-50
+
+intChosen
+
+chosenArray
+
+You Pass 
+
+Overestimated 
+"It's less than "  + String(indexLast)
+
+Underestimated 
+"It's more than "  +  String(indexFirst)
+
+DIE
+*/
 
 //DC Motor Define 
 #define dcMotorA1 11
@@ -49,14 +78,22 @@ int indexRandom =0;
 /*const int rs = 9, en = 10, d4 = 11, d5 = 12, d6 = 13, d7 = 14;
 LiquidCrystal lcd (rs,en,d4,d5,d6,d7); //Creating object */
 
+ISR(TIMER1_OVF_vect) {
+  TCNT1 = 3036; //To reduce the offset
+  duration++;
+}
 
 void setup() {
   Serial.begin(9600);
   randomSeed(analogRead(A4)); //Random empty AnalogInput
   
-
-  //Piezobuzzer
-  pinMode(piezoBuzzer,OUTPUT);
+  //digitalSensor 
+  pinMode(digitalSensor, INPUT);
+  
+  //Bluetooth 
+  bluetoothModule.begin(9600);
+  pinMode(RxD, INPUT);
+  pinMode(TxD, OUTPUT);
   
   //DC Motor 
   pinMode(dcMotorA1, OUTPUT);
@@ -70,7 +107,6 @@ void setup() {
   pinMode(KC, INPUT);
   pinMode(KD, INPUT);
   pinMode(KAvail, INPUT);
-
   
   //Timer 
   TCCR1A = 0; //cuz its a 16 bit counter A = 8 bit 
@@ -86,37 +122,11 @@ void setup() {
   for (int i=0; i<(randomArraySize+1); i++) randomArray[i] = i; // Making randomArray into list of 0-50 
 }
 
-ISR(TIMER1_OVF_vect) {
-  TCNT1 = 3036; //To reduce the offset
-  duration++;
-}
-
-
 void loop() {
   intRandom = random(0,51); //selects random number 0 <=indexRandom <51
   indexRandom = findIndex(intRandom, randomArray, (randomArraySize +1));
-  /*analogWrite(dcMotorA1, 150);
-  analogWrite(dcMotorA2, LOW);
-  analogWrite(dcMotorB1, 150);
-  analogWrite(dcMotorB2, LOW);
-  delay(1000); //10 second before it restarts. 
-  analogWrite(dcMotorA1, LOW);
-  analogWrite(dcMotorA2, LOW);
-  analogWrite(dcMotorB1, LOW);
-  analogWrite(dcMotorB2, LOW);  
-  delay(2000);
-  analogWrite(dcMotorA1, LOW);
-  analogWrite(dcMotorA2, 150);
-  analogWrite(dcMotorB1, LOW);
-  analogWrite(dcMotorB2, 150);
-  delay(1000);
-  analogWrite(dcMotorA1, LOW);
-  analogWrite(dcMotorA2, LOW);
-  analogWrite(dcMotorB1, LOW);
-  analogWrite(dcMotorB2, LOW);  
-  delay(2000);*/
-  //Serial.println(indexRandom);
-  binarySearchTreeProcess();
+  Serial.println(digitalRead(digitalSensor));
+  if (digitalRead(digitalSensor) == 0) binarySearchTreeProcess();
 }
 
 void keypadRead() {
@@ -139,13 +149,14 @@ void keypadRead() {
   }
 }
 
-
 void binarySearchTreeProcess() {
     indexFirst = 0;
     indexLast = sizeof(randomArray)/sizeof(randomArray[0]);
     //Timer should start
-    while(duration <=30){      
-      Serial.println(chosenArray);
+    while(duration <45){      
+      //Serial.println(chosenArray);
+      bluetoothModule.println(chosenArray);
+      
       if (digitalRead(KAvail)){
         keypadRead();
         delay(300);
@@ -153,56 +164,56 @@ void binarySearchTreeProcess() {
       if (checkStatus == true){
         indexChosen = findIndex(intChosen, randomArray,(randomArraySize+1));
         if (indexChosen == -1) {
-          Serial.println("Please choose range from 0-50");
+          //Serial.println("Please choose range from 0-50");
+          bluetoothModule.println("Please choose range from 0-50");
           delay(2000);
         }
         else if ( indexChosen == indexRandom ){
-          Serial.println("You pass");
-          analogWrite(dcMotorA1, 100);
-          analogWrite(dcMotorA2, LOW);
-          analogWrite(dcMotorB1, 100);
-          analogWrite(dcMotorB1, 150);
-          analogWrite(dcMotorB2, LOW);
-          delay(2000); //10 second before it restarts. 
+          //Serial.println("You pass");
+          bluetoothModule.println("You Pass");          
+          analogWrite(dcMotorB1, 255);
+          analogWrite(dcMotorB2, 155);
+          delay(2300); //10 second before it restarts. 
           analogWrite(dcMotorB1, LOW);
           analogWrite(dcMotorB2, LOW);
-          delay(10000);
-          analogWrite(dcMotorB1, LOW);
-          analogWrite(dcMoto4B2, 150);
-          delay(2000); 
+          delay(5000);
+          analogWrite(dcMotorB1, 155);
+          analogWrite(dcMotorB2, 255);
+          delay(2400); 
           analogWrite(dcMotorB1, LOW);
           analogWrite(dcMotorB2, LOW);  
-          
+          delay(200);
+    
+          //resetting the variables 
           checkStatus = false;
+          duration =0;
           for (int i=0; i<chosenArraySize; i++) chosenArray[i]=' '; // Initializing the chosenArraySize into _ _ _ 0
           chosenArray[chosenArraySize] = 0;  //because this means nothing in ASCII
-          break; //break from while loop 
+          return; //break from while loop 
           
         }
         else if( indexChosen > indexRandom ){
           if (indexChosen <= indexLast) {
             indexLast = indexChosen;
-            Serial.println("Overestimated"); 
-            for (int i=0; i<3; i++){
-              tone(piezoBuzzer, 500, 100);
-              delay(200);  
-            }
+            //Serial.println("Overestimated"); 
+            bluetoothModule.println("Overestimated");
+            delay(500);
           }
           else ;
-            Serial.println("It's less than "  + String(indexLast));
+            //Serial.println("It's less than "  + String(indexLast));
+            bluetoothModule.println("It's less than "  + String(indexLast));
             delay(2000);
         }
         else if ( indexChosen < indexRandom ){
           if (indexChosen >= indexFirst) {
             indexFirst = indexChosen;
-            Serial.println("Underestimated"); 
-            for (int i=0; i<2; i++){
-              tone(piezoBuzzer, 100, 100);
-              delay(200);  
-            }
+            //Serial.println("Underestimated"); 
+            bluetoothModule.println("Underestimated");
+            delay(500);
           }
           else ;  
-            Serial.println("It's more than "  +  String(indexFirst));
+            //Serial.println("It's more than "  +  String(indexFirst));
+            bluetoothModule.println("It's more than " + String(indexFirst)); 
             delay(2000);
         }
 
@@ -211,18 +222,19 @@ void binarySearchTreeProcess() {
         chosenArray[chosenArraySize] = 0;  //because this means nothing in ASCII
       }
     }
-    Serial.println("DIE");    
-    analogWrite(dcMotorA1, 100);
-    analogWrite(dcMotorA2, LOW);
-    delay(1300);
+    //Serial.println("DIE");    
+    bluetoothModule.println("DIE");
+    analogWrite(dcMotorA1, 255);
+    analogWrite(dcMotorA2, 155);
+    delay(1650);
     analogWrite(dcMotorA1, LOW);
     analogWrite(dcMotorA2, LOW);
-    delay(1000);
-    analogWrite(dcMotorA1; LOW);
-    analogWrite(dcMotorA2; 100);
-    delay(1300);
-    analogWrite(dcMotorA1; LOW);
-    analogWrite(dcMotorA2; LOW);
+    delay(2000);
+    analogWrite(dcMotorA1, 155);
+    analogWrite(dcMotorA2, 255);
+    delay(1750);
+    analogWrite(dcMotorA1, LOW);
+    analogWrite(dcMotorA2, LOW);
     
     //resetting the variables 
     checkStatus = false;
